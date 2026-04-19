@@ -60,6 +60,9 @@ jobs:
           ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
           IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
 
+          echo "ecr_registry=${ECR_REGISTRY}" >> "$GITHUB_OUTPUT"
+          echo "image_uri=${IMAGE_URI}" >> "$GITHUB_OUTPUT"
+
           echo "ECR_REGISTRY=${ECR_REGISTRY}"
           echo "IMAGE_URI=${IMAGE_URI}"
 
