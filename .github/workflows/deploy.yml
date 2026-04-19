@@ -11,6 +11,7 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: qa
 
     steps:
     - name: Checkout code
