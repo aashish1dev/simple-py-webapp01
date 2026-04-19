@@ -32,7 +32,7 @@ jobs:
       - name: Run tests
         run: pytest tests/ --tb=short
 
-  build-and-push:
+  build_and_push:
     needs: test
     runs-on: ubuntu-latest
     environment: qa
@@ -80,7 +80,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy:
-    needs: build-and-push
+    needs: build_and_push
     runs-on: ubuntu-latest
     environment: qa
 
@@ -95,8 +95,8 @@ jobs:
       - name: Deploy to EC2 via SSM
         id: deploy
         env:
-          IMAGE_URI: ${{ needs.build-and-push.outputs.image_uri }}
-          ECR_REGISTRY: ${{ needs.build-and-push.outputs.ecr_registry }}
+          IMAGE_URI: ${{ needs.build_and_push.outputs.image_uri }}
+          ECR_REGISTRY: ${{ needs.build_and_push.outputs.ecr_registry }}
           INSTANCE_ID: ${{ secrets.INSTANCE_ID }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           GH_REPO: ${{ github.repository }}
@@ -113,7 +113,8 @@ jobs:
               \"cd ${DEPLOY_PATH}\",
               \"curl -fsSL -H 'Authorization: token ${GH_TOKEN}' -o docker-compose.yml https://raw.githubusercontent.com/${GH_REPO}/${GH_REF}/docker-compose.yml\",
               \"aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}\",
-              \"export DOCKER_IMAGE='${IMAGE_URI}'\",
+              \"export DOCKER_IMAGE=${IMAGE_URI}\",
+              \"echo ${IMAGE_URI}\",
               \"docker compose --env-file <(aws secretsmanager get-secret-value --secret-id ${SECRETS_MANAGER_ID} --query SecretString --output text | python3 -c \\\"import json,sys; data=json.load(sys.stdin); [print(f'{k}={v}') for k,v in data.items()]\\\") pull\",
               \"docker compose --env-file <(aws secretsmanager get-secret-value --secret-id ${SECRETS_MANAGER_ID} --query SecretString --output text | python3 -c \\\"import json,sys; data=json.load(sys.stdin); [print(f'{k}={v}') for k,v in data.items()]\\\") up -d --force-recreate\"
             ]" \
