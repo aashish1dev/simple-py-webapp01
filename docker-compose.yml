@@ -11,10 +11,3 @@ services:
       - APP_SECRET_KEY=${APP_SECRET_KEY}
       - FLASK_ENV=production
     restart: unless-stopped
-    logging:
-      driver: awslogs
-      options:
-        awslogs-group: ${CLOUDWATCH_LOG_GROUP}
-        awslogs-region: ${AWS_REGION}
-        awslogs-create-group: "true"
-        awslogs-stream-prefix: simple-py-webapp

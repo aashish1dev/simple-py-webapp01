@@ -131,10 +131,6 @@ jobs:
               \"export DOCKER_IMAGE=${IMAGE_URI}\",
               \"echo DOCKER_IMAGE=\\\$DOCKER_IMAGE\",
               \"export DOCKER_IMAGE='${IMAGE_URI}'\",
-              \"export APP_PORT='${APP_PORT}'\",
-              \"export FLASK_ENV='${FLASK_ENV}'\",
-              \"export SECRET_KEY='${SECRET_KEY}'\",
-              \"export DATABASE_URL='${DATABASE_URL}'\",
               \"docker compose pull\",
               \"docker compose up -d --force-recreate\"
             ]" \
