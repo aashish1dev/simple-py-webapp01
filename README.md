@@ -97,7 +97,10 @@ In your GitHub repository, go to Settings > Secrets and variables > Actions and 
 On push to the `main` branch, the workflow will:
 1. Run the test suite.
 2. Configure AWS credentials.
-3. Use SSM to send deployment commands to the private EC2 instance.
+3. Build and push the tested Docker image to ECR.
+4. Use SSM to deploy the tested image on the private EC2 instance with Docker Compose.
+
+The workflow no longer runs `git pull` on the EC2 instance. It deploys the tested image from ECR using `docker compose pull` and `docker compose up -d`.
 4. Pull the latest code, write `.env`, build the Docker image, and start the app with Docker Compose.
 
 The Docker Compose setup sends application logs to CloudWatch via the `awslogs` driver. Ensure the EC2 instance has an IAM role with CloudWatch Logs permissions and Docker Compose installed.

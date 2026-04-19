@@ -2,7 +2,9 @@ version: '3.9'
 
 services:
   web:
+    image: ${DOCKER_IMAGE:-simple-py-webapp}
     build: .
+    pull_policy: always
     ports:
       - "5000:5000"
     environment:
