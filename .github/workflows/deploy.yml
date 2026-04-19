@@ -121,7 +121,7 @@ jobs:
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
-            --comment "Deploy ${IMAGE_URI} via GitHub Actions" \
+            --comment "Deploy simple-py-webapp01 to EC2" \
             --parameters "commands=[
               \"set -e\",
               \"mkdir -p ${DEPLOY_PATH}\",
