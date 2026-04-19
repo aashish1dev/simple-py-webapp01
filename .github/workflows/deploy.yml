@@ -32,14 +32,10 @@ jobs:
       - name: Run tests
         run: pytest tests/ --tb=short
 
-  build_and_push:
+  build_with_push:
     needs: test
     runs-on: ubuntu-latest
     environment: qa
-
-    outputs:
-      image_uri: ${{ steps.image.outputs.image_uri }}
-      ecr_registry: ${{ steps.image.outputs.ecr_registry }}
 
     steps:
       - name: Checkout code
@@ -57,13 +53,15 @@ jobs:
 
       - name: Resolve image URI
         id: image
+        shell: bash
         run: |
-          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          set -e
+          ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
           ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
           IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
 
-          echo "ecr_registry=${ECR_REGISTRY}" >> "$GITHUB_OUTPUT"
-          echo "image_uri=${IMAGE_URI}" >> "$GITHUB_OUTPUT"
+          echo "ECR_REGISTRY=${ECR_REGISTRY}"
+          echo "IMAGE_URI=${IMAGE_URI}"
 
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
@@ -80,7 +78,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy:
-    needs: build_and_push
+    needs: build_with_push
     runs-on: ubuntu-latest
     environment: qa
 
@@ -92,17 +90,31 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Resolve deploy image URI
+        id: deploy_image
+        shell: bash
+        run: |
+          set -e
+          ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+          ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+          IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+
+          echo "ECR_REGISTRY=${ECR_REGISTRY}" >> "$GITHUB_ENV"
+          echo "IMAGE_URI=${IMAGE_URI}" >> "$GITHUB_ENV"
+
+          echo "Deploying IMAGE_URI=${IMAGE_URI}"
+
       - name: Deploy to EC2 via SSM
         id: deploy
         env:
-          IMAGE_URI: ${{ needs.build_and_push.outputs.image_uri }}
-          ECR_REGISTRY: ${{ needs.build_and_push.outputs.ecr_registry }}
           INSTANCE_ID: ${{ secrets.INSTANCE_ID }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           GH_REPO: ${{ github.repository }}
           GH_REF: ${{ github.ref_name }}
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -e
+
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
@@ -114,12 +126,12 @@ jobs:
               \"curl -fsSL -H 'Authorization: token ${GH_TOKEN}' -o docker-compose.yml https://raw.githubusercontent.com/${GH_REPO}/${GH_REF}/docker-compose.yml\",
               \"aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}\",
               \"export DOCKER_IMAGE=${IMAGE_URI}\",
-              \"echo ${IMAGE_URI}\",
+              \"echo DOCKER_IMAGE=\\\$DOCKER_IMAGE\",
               \"docker compose --env-file <(aws secretsmanager get-secret-value --secret-id ${SECRETS_MANAGER_ID} --query SecretString --output text | python3 -c \\\"import json,sys; data=json.load(sys.stdin); [print(f'{k}={v}') for k,v in data.items()]\\\") pull\",
               \"docker compose --env-file <(aws secretsmanager get-secret-value --secret-id ${SECRETS_MANAGER_ID} --query SecretString --output text | python3 -c \\\"import json,sys; data=json.load(sys.stdin); [print(f'{k}={v}') for k,v in data.items()]\\\") up -d --force-recreate\"
             ]" \
             --timeout-seconds 600 \
-            --query "Command.CommandId" \
+            --query 'Command.CommandId' \
             --output text)
 
           echo "command_id=${COMMAND_ID}" >> "$GITHUB_OUTPUT"
