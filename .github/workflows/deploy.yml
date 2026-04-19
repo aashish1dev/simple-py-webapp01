@@ -50,10 +50,23 @@ jobs:
 
     - name: Deploy to EC2 via SSM and Docker Compose
       run: |
+        PARAMS=$(python - <<'PY'
+import json, os
+cmd = (
+    f'cd {os.environ["DEPLOY_PATH"]} && '
+    f'export CLOUDWATCH_LOG_GROUP="{os.environ["CLOUDWATCH_LOG_GROUP"]}" '
+    f'AWS_REGION="{os.environ["AWS_REGION"]}" '
+    f'APP_SECRET_KEY="{os.environ["APP_SECRET_KEY"]}" '
+    f'DOCKER_IMAGE="{os.environ["IMAGE_NAME"]}" && '
+    'docker compose pull && docker compose up -d'
+)
+print(json.dumps({"commands": [cmd]}))
+PY
+)
         aws ssm send-command \
           --instance-ids "${{ secrets.INSTANCE_ID }}" \
           --document-name "AWS-RunShellScript" \
           --comment "Deploy simple-py-webapp01 via GitHub Actions" \
-          --parameters commands='["cd ${{ env.DEPLOY_PATH }} && export CLOUDWATCH_LOG_GROUP="${{ secrets.CLOUDWATCH_LOG_GROUP }}" AWS_REGION="${{ secrets.AWS_REGION }}" APP_SECRET_KEY="${{ secrets.APP_SECRET_KEY }}" DOCKER_IMAGE="'"${IMAGE_NAME}"'" && docker compose pull && docker compose up -d"]' \
+          --parameters "$PARAMS" \
           --timeout-seconds 600 \
           --output text
